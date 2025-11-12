@@ -1,12 +1,20 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+// Ajuste de resolução responsiva
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
 // =====================
-// CONFIGURAÇÕES BÁSICAS
+// CONFIGURAÇÕES GERAIS
 // =====================
 const GRAVITY = 0.8;
-const MOVE_SPEED = 3.2;
-const JUMP_FORCE = 14;
+const MOVE_SPEED = 4;
+const JUMP_FORCE = 16;
 
 let levelWon = false;
 
@@ -14,53 +22,71 @@ let levelWon = false;
 // PLAYER
 // =====================
 const player = {
-  x: 200,
-  y: 400,
-  width: 15,
-  height: 35,
+  x: 100,
+  y: 300,
+  width: 20,
+  height: 40,
   dx: 0,
   dy: 0,
   grounded: false
 };
 
 // =====================
-// ELEMENTOS DO JOGO
+// OBJETOS DO JOGO
 // =====================
-const platforms = [
-  { x: 50, y: 500, width: 160, height: 30, troll: true },
-  { x: 260, y: 400, width: 120, height: 30 },
-  { x: 420, y: 440, width: 100, height: 30, troll: false },
-  { x: 580, y: 480, width: 100, height: 30, troll: false },
-  { x: 730, y: 480, width: 150, height: 30, troll: false },
+let platforms = [
+  { x: 50, y: 400, width: 180, height: 25, troll: false },
+  { x: 270, y: 360, width: 120, height: 25, troll: true },
+  { x: 430, y: 400, width: 100, height: 25, troll: false },
+  { x: 580, y: 420, width: 150, height: 25, troll: false },
+  { x: 760, y: 400, width: 150, height: 25, troll: false }
 ];
 
-const spikes = [
-  { x: 360, y: 520, width: 40, height: 20 },
-  { x: 620, y: 520, width: 40, height: 20 }
+let spikes = [
+  { x: 330, y: 425, width: 40, height: 25 },
+  { x: 640, y: 445, width: 40, height: 25 }
 ];
 
-const door = { x: 860, y: 465, width: 30, height: 60 };
+const door = { x: 900, y: 340, width: 35, height: 65 };
 
 // =====================
-// ENTRADAS
+// CONTROLES
 // =====================
 const keys = {};
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
+// Controles para celular (toque)
+let touch = { left: false, right: false, jump: false };
+document.addEventListener("touchstart", handleTouch);
+document.addEventListener("touchend", handleTouchEnd);
+
+function handleTouch(e) {
+  const x = e.touches[0].clientX;
+  const y = e.touches[0].clientY;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  if (x < w / 3) touch.left = true;
+  else if (x > (w / 3) * 2) touch.right = true;
+  else if (y < h / 2) touch.jump = true;
+}
+function handleTouchEnd() {
+  touch = { left: false, right: false, jump: false };
+}
+
 // =====================
-// LÓGICA PRINCIPAL
+// LÓGICA DE JOGO
 // =====================
 function update() {
   if (levelWon) return;
 
-  // Movimento
-  if (keys["a"] || keys["ArrowLeft"]) player.dx = -MOVE_SPEED;
-  else if (keys["d"] || keys["ArrowRight"]) player.dx = MOVE_SPEED;
+  // Movimento lateral
+  if (keys["a"] || keys["ArrowLeft"] || touch.left) player.dx = -MOVE_SPEED;
+  else if (keys["d"] || keys["ArrowRight"] || touch.right) player.dx = MOVE_SPEED;
   else player.dx = 0;
 
-  // Pulo
-  if ((keys["w"] || keys[" "] || keys["ArrowUp"]) && player.grounded) {
+  // Pular
+  if ((keys[" "] || keys["w"] || keys["ArrowUp"] || touch.jump) && player.grounded) {
     player.dy = -JUMP_FORCE;
     player.grounded = false;
   }
@@ -70,7 +96,7 @@ function update() {
   player.x += player.dx;
   player.y += player.dy;
 
-  // Colisão plataformas
+  // Colisão com plataformas
   player.grounded = false;
   for (let p of platforms) {
     if (
@@ -81,8 +107,7 @@ function update() {
       player.dy >= 0
     ) {
       if (p.troll) {
-        // chão falso: cai depois de 0.3s
-        setTimeout(() => { p.y += 1000; }, 300);
+        setTimeout(() => { p.y += 2000; }, 300);
       } else {
         player.y = p.y - player.height;
         player.dy = 0;
@@ -91,18 +116,18 @@ function update() {
     }
   }
 
-  // Colisão com espinhos
+  // Espinhos
   for (let s of spikes) {
     if (
       player.x < s.x + s.width &&
       player.x + player.width > s.x &&
       player.y + player.height > s.y
     ) {
-      lose("💀 Você caiu no espinho!");
+      lose("💀 Caiu no espinho!");
     }
   }
 
-  // Chegou na porta
+  // Porta
   if (
     player.x < door.x + door.width &&
     player.x + player.width > door.x &&
@@ -124,19 +149,19 @@ function lose(msg) {
 }
 
 function win() {
-  levelWon = true;
-  alert("🎉 Você venceu! Mas cuidado, o próximo nível é pior...");
+  alert("🎉 Você venceu! O Level Devil aprova sua dor!");
   resetGame();
 }
 
-// Resetar tudo
+// =====================
+// RESET
+// =====================
 function resetGame() {
-  player.x = 200;
-  player.y = 400;
+  player.x = 100;
+  player.y = 300;
   player.dy = 0;
-  levelWon = false;
   for (let p of platforms) {
-    if (p.troll) p.y = 500;
+    if (p.troll) p.y = 360;
   }
 }
 
@@ -179,10 +204,13 @@ function draw() {
   ctx.fillRect(player.x, player.y, player.width, player.height);
 }
 
-function loop() {
+// =====================
+// LOOP PRINCIPAL
+// =====================
+function gameLoop() {
   update();
   draw();
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
 
-loop();
+gameLoop();
